@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grade Average</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1B2430;
+    --ink-deep: #12181F;
+    --parchment: #F1ECDF;
+    --parchment-dim: #E7E0CC;
+    --rule: #C9BFA5;
+    --rule-soft: rgba(201,191,165,0.35);
+    --gold: #B8863B;
+    --gold-bright: #D6A85C;
+    --crimson: #8A3B32;
+    --ink-soft: #5A6472;
+    --ink-faint: #8891A0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: var(--ink);
+    background-image:
+      radial-gradient(ellipse at 20% -10%, rgba(184,134,59,0.10), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(184,134,59,0.06), transparent 50%);
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--parchment);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .sheet {
+    width: 100%;
+    max-width: 460px;
+    background: var(--parchment);
+    color: var(--ink);
+    border-radius: 3px;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.04);
+    overflow: hidden;
+  }
+
+  .sheet__header {
+    padding: 34px 36px 22px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .sheet__title {
+    font-family: 'Fraunces', serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    color: var(--ink-deep);
+  }
+
+  .sheet__sub {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    max-width: 34ch;
+  }
+
+  .sheet__body {
+    padding: 26px 36px 32px;
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .row__index {
+    font-size: 13px;
+    color: var(--ink-faint);
+    width: 16px;
+    text-align: right;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row__field {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-bottom: 1.5px solid var(--rule);
+    transition: border-color 0.15s ease;
+  }
+
+  .row__field:focus-within {
+    border-color: var(--gold);
+  }
+
+  .row__field input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink-deep);
+    padding: 7px 22px 7px 2px;
+    outline: none;
+  }
+
+  .row__field input::placeholder {
+    color: var(--ink-faint);
+    font-weight: 400;
+  }
+
+  .row__field::after {
+    content: '%';
+    position: absolute;
+    right: 2px;
+    font-size: 14px;
+    color: var(--ink-faint);
+    pointer-events: none;
+  }
+
+  .row__field.is-invalid {
+    border-color: var(--crimson);
+  }
+
+  .row__remove {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 2px;
+    flex-shrink: 0;
+    transition: color 0.15s ease;
+  }
+
+  .row__remove:hover { color: var(--crimson); }
+
+  .add-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 6px 2px;
+    margin-bottom: 20px;
+    transition: color 0.15s ease;
+  }
+
+  .add-row:hover { color: var(--gold); }
+
+  .add-row__mark {
+    font-size: 16px;
+    font-weight: 400;
+  }
+
+  .hint {
+    font-size: 12.5px;
+    color: var(--crimson);
+    min-height: 16px;
+    margin: -8px 0 14px;
+  }
+
+  .calc-btn {
+    width: 100%;
+    background: var(--ink-deep);
+    color: var(--parchment);
+    border: none;
+    border-radius: 2px;
+    padding: 14px 20px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+
+  .calc-btn:hover { background: #232E3D; }
+  .calc-btn:active { transform: scale(0.99); }
+
+  .calc-btn:disabled {
+    cursor: default;
+    background: var(--ink-deep);
+  }
+
+  .calc-btn__fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    background: var(--gold);
+    opacity: 0.85;
+    z-index: 0;
+  }
+
+  .calc-btn__label {
+    position: relative;
+    z-index: 1;
+  }
+
+  .result {
+    margin-top: 26px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    display: none;
+  }
+
+  .result.is-visible {
+    display: block;
+  }
+
+  .result__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .result__label {
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-transform: lowercase;
+  }
+
+  .result__value {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 42px;
+    color: var(--ink-deep);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .badge {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 2px;
+    background: var(--parchment-dim);
+    border-left: 3px solid var(--gold);
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  .badge.is-stamped {
+    animation: stamp 0.42s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  }
+
+  @keyframes stamp {
+    0%   { opacity: 0; transform: translateY(4px) scale(0.97); }
+    60%  { opacity: 1; transform: translateY(0) scale(1.015); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .badge--pass { border-left-color: var(--ink-soft); }
+  .badge--2-2 { border-left-color: #9C8A4E; }
+  .badge--2-1 { border-left-color: var(--gold); }
+  .badge--1-1 { border-left-color: var(--crimson); }
+
+  .badge__code {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: var(--ink-deep);
+    flex-shrink: 0;
+    min-width: 46px;
+  }
+
+  .badge__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .badge__name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-deep);
+  }
+
+  .badge__range {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  .footnote {
+    margin: 16px 0 0;
+    font-size: 12px;
+    color: var(--ink-faint);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<main class="sheet">
+  <div class="sheet__header">
+    <h1 class="sheet__title">Grade average</h1>
+    <p class="sheet__sub">Enter each result as a percentage. The classification is worked out once every value is in.</p>
+  </div>
+
+  <div class="sheet__body">
+    <div class="rows" id="rows"></div>
+
+    <button class="add-row" id="addRow" type="button">
+      <span class="add-row__mark">+</span> Add grade
+    </button>
+
+    <p class="hint" id="hint"></p>
+
+    <button class="calc-btn" id="calcBtn" type="button">
+      <span class="calc-btn__fill" id="calcFill"></span>
+      <span class="calc-btn__label" id="calcLabel">Calculate average</span>
+    </button>
+
+    <div class="result" id="result">
+      <div class="result__row">
+        <span class="result__label">average</span>
+        <span class="result__value" id="avgValue">0%</span>
+      </div>
+      <div class="badge" id="badge">
+        <span class="badge__code" id="badgeCode">—</span>
+        <span class="badge__text">
+          <span class="badge__name" id="badgeName">—</span>
+          <span class="badge__range" id="badgeRange">—</span>
+        </span>
+      </div>
+    </div>
+
+    <p class="footnote">Classification bands: 70–100% First Class · 60–69% Second Class (grade 1) · 50–59% Second Class (grade 2) · 40–49% Pass.</p>
+  </div>
+</main>
+
+<script>
+  const rowsEl = document.getElementById('rows');
+  const addRowBtn = document.getElementById('addRow');
+  const calcBtn = document.getElementById('calcBtn');
+  const calcFill = document.getElementById('calcFill');
+  const calcLabel = document.getElementById('calcLabel');
+  const hintEl = document.getElementById('hint');
+  const resultEl = document.getElementById('result');
+  const avgValueEl = document.getElementById('avgValue');
+  const badgeEl = document.getElementById('badge');
+  const badgeCodeEl = document.getElementById('badgeCode');
+  const badgeNameEl = document.getElementById('badgeName');
+  const badgeRangeEl = document.getElementById('badgeRange');
+
+  const CLASSIFICATIONS = [
+    { min: 70, max: 100, code: '1:1',  name: 'First Class Honours',            range: '70 – 100%', klass: 'badge--1-1' },
+    { min: 60, max: 69,  code: '2:1',  name: 'Second Class Honours (grade 1)', range: '60 – 69%',  klass: 'badge--2-1' },
+    { min: 50, max: 59,  code: '2:2',  name: 'Second Class Honours (grade 2)', range: '50 – 59%',  klass: 'badge--2-2' },
+    { min: 40, max: 49,  code: 'Pass', name: 'Pass',                           range: '40 – 49%',  klass: 'badge--pass' },
+  ];
+
+  let rowCount = 0;
+
+  function addRow(value = '') {
+    rowCount += 1;
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <span class="row__index">${rowCount}</span>
+      <span class="row__field">
+        <input type="number" inputmode="decimal" min="0" max="100" step="0.1" placeholder="0" value="${value}">
+      </span>
+      <button class="row__remove" type="button" aria-label="Remove grade" title="Remove">×</button>
+    `;
+    rowsEl.appendChild(row);
+
+    const input = row.querySelector('input');
+    const field = row.querySelector('.row__field');
+    const removeBtn = row.querySelector('.row__remove');
+
+    input.addEventListener('input', () => {
+      field.classList.remove('is-invalid');
+      hintEl.textContent = '';
+      hideResult();
+    });
+
+    removeBtn.addEventListener('click', () => {
+      row.remove();
+      renumber();
+      hideResult();
+    });
+
+    return input;
+  }
+
+  function renumber() {
+    [...rowsEl.querySelectorAll('.row')].forEach((row, i) => {
+      row.querySelector('.row__index').textContent = i + 1;
+    });
+  }
+
+  function hideResult() {
+    resultEl.classList.remove('is-visible');
+    badgeEl.classList.remove('is-stamped');
+  }
+
+  addRowBtn.addEventListener('click', () => {
+    const input = addRow();
+    input.focus();
+  });
+
+  // Seed with three starting rows
+  addRow();
+  addRow();
+  addRow();
+
+  function collectGrades() {
+    const inputs = [...rowsEl.querySelectorAll('input')];
+    const values = [];
+    let firstInvalid = null;
+
+    inputs.forEach((input) => {
+      const field = input.closest('.row__field');
+      field.classList.remove('is-invalid');
+      const raw = input.value.trim();
+      if (raw === '') return;
+
+      const num = Number(raw);
+      const valid = !Number.isNaN(num) && num >= 0 && num <= 100;
+
+      if (!valid) {
+        field.classList.add('is-invalid');
+        if (!firstInvalid) firstInvalid = input;
+      } else {
+        values.push(num);
+      }
+    });
+
+    return { values, firstInvalid };
+  }
+
+  function classify(average) {
+    for (const c of CLASSIFICATIONS) {
+      if (average >= c.min && average <= c.max) return c;
+    }
+    if (average > 100) return null;
+    return {
+      code: '—',
+      name: average < 40 ? 'Below pass mark' : 'Unclassified',
+      range: 'below 40%',
+      klass: 'badge--pass',
+    };
+  }
+
+  function animateCount(target, duration = 700) {
+    const start = performance.now();
+    return new Promise((resolve) => {
+      function tick(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = target * eased;
+        avgValueEl.textContent = current.toFixed(1) + '%';
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          avgValueEl.textContent = target.toFixed(1) + '%';
+          resolve();
+        }
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // Simulated async computation with a visible progress fill on the button
+  function computeAverageAsync(values) {
+    return new Promise((resolve) => {
+      let progress = 0;
+      calcFill.style.width = '0%';
+      const interval = setInterval(() => {
+        progress += Math.random() * 22 + 12;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          calcFill.style.width = '100%';
+          setTimeout(() => {
+            const sum = values.reduce((a, b) => a + b, 0);
+            resolve(sum / values.length);
+          }, 140);
+        } else {
+          calcFill.style.width = progress + '%';
+        }
+      }, 90);
+    });
+  }
+
+  calcBtn.addEventListener('click', async () => {
+    const { values, firstInvalid } = collectGrades();
+
+    if (firstInvalid) {
+      hintEl.textContent = 'Grades must be between 0 and 100.';
+      firstInvalid.focus();
+      return;
+    }
+
+    if (values.length === 0) {
+      hintEl.textContent = 'Enter at least one grade.';
+      return;
+    }
+
+    hintEl.textContent = '';
+    hideResult();
+    calcBtn.disabled = true;
+    calcLabel.textContent = 'Calculating…';
+
+    const average = await computeAverageAsync(values);
+    const classification = classify(average);
+
+    resultEl.classList.add('is-visible');
+    await animateCount(average);
+
+    badgeEl.className = 'badge ' + (classification ? classification.klass : '');
+    badgeCodeEl.textContent = classification ? classification.code : '—';
+    badgeNameEl.textContent = classification ? classification.name : '—';
+    badgeRangeEl.textContent = classification ? classification.range : '—';
+
+    requestAnimationFrame(() => {
+      badgeEl.classList.add('is-stamped');
+    });
+
+    calcBtn.disabled = false;
+    calcLabel.textContent = 'Calculate average';
+    calcFill.style.width = '0%';
+  });
+</script>
+
+</body>
+</html>
