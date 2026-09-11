@@ -84,14 +84,84 @@
   .rows {
     display: flex;
     flex-direction: column;
-    gap: 9px;
-    margin-bottom: 14px;
+    gap: 12px;
+    margin-bottom: 16px;
   }
 
   .row {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid transparent;
+  }
+
+  .row + .row {
+    margin-top: 2px;
+  }
+
+  .row__main {
+    display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .row__weight {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-left: 26px;
+  }
+
+  .weight-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .weight-check input {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--rule);
+    border-radius: 2px;
+    background: transparent;
+    margin: 0;
+    flex-shrink: 0;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .weight-check input:checked {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+
+  .weight-check input:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 3px;
+    height: 7px;
+    border: solid var(--parchment);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(40deg);
+  }
+
+  .weight-check span {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    transition: color 0.15s ease;
+  }
+
+  .weight-check:has(input:checked) span {
+    color: var(--gold);
+    font-weight: 500;
   }
 
   .row__index {
@@ -391,21 +461,34 @@
     const row = document.createElement('div');
     row.className = 'row';
     row.innerHTML = `
-      <span class="row__index">${rowCount}</span>
-      <span class="row__field">
-        <input type="number" inputmode="decimal" min="0" max="100" step="0.1" placeholder="0" value="${value}">
+      <span class="row__main">
+        <span class="row__index">${rowCount}</span>
+        <span class="row__field">
+          <input class="grade-input" type="number" inputmode="decimal" min="0" max="100" step="0.1" placeholder="0" value="${value}">
+        </span>
+        <button class="row__remove" type="button" aria-label="Remove grade" title="Remove">×</button>
       </span>
-      <button class="row__remove" type="button" aria-label="Remove grade" title="Remove">×</button>
+      <span class="row__weight">
+        <label class="weight-check">
+          <input type="checkbox" class="weight-input">
+          <span>10 credit module (double weight)</span>
+        </label>
+      </span>
     `;
     rowsEl.appendChild(row);
 
-    const input = row.querySelector('input');
+    const input = row.querySelector('.grade-input');
     const field = row.querySelector('.row__field');
     const removeBtn = row.querySelector('.row__remove');
+    const weightInput = row.querySelector('.weight-input');
 
     input.addEventListener('input', () => {
       field.classList.remove('is-invalid');
       hintEl.textContent = '';
+      hideResult();
+    });
+
+    weightInput.addEventListener('change', () => {
       hideResult();
     });
 
@@ -440,13 +523,16 @@
   addRow();
 
   function collectGrades() {
-    const inputs = [...rowsEl.querySelectorAll('input')];
-    const values = [];
+    const rows = [...rowsEl.querySelectorAll('.row')];
+    const entries = [];
     let firstInvalid = null;
 
-    inputs.forEach((input) => {
-      const field = input.closest('.row__field');
+    rows.forEach((row) => {
+      const input = row.querySelector('.grade-input');
+      const field = row.querySelector('.row__field');
+      const weightInput = row.querySelector('.weight-input');
       field.classList.remove('is-invalid');
+
       const raw = input.value.trim();
       if (raw === '') return;
 
@@ -457,11 +543,12 @@
         field.classList.add('is-invalid');
         if (!firstInvalid) firstInvalid = input;
       } else {
-        values.push(num);
+        const weight = weightInput.checked ? 2 : 1;
+        entries.push({ value: num, weight });
       }
     });
 
-    return { values, firstInvalid };
+    return { entries, firstInvalid };
   }
 
   function classify(average) {
@@ -497,7 +584,7 @@
   }
 
   // Simulated async computation with a visible progress fill on the button
-  function computeAverageAsync(values) {
+  function computeAverageAsync(entries) {
     return new Promise((resolve) => {
       let progress = 0;
       calcFill.style.width = '0%';
@@ -508,8 +595,9 @@
           clearInterval(interval);
           calcFill.style.width = '100%';
           setTimeout(() => {
-            const sum = values.reduce((a, b) => a + b, 0);
-            resolve(sum / values.length);
+            const weightedSum = entries.reduce((a, e) => a + e.value * e.weight, 0);
+            const totalWeight = entries.reduce((a, e) => a + e.weight, 0);
+            resolve(weightedSum / totalWeight);
           }, 140);
         } else {
           calcFill.style.width = progress + '%';
@@ -519,7 +607,7 @@
   }
 
   calcBtn.addEventListener('click', async () => {
-    const { values, firstInvalid } = collectGrades();
+    const { entries, firstInvalid } = collectGrades();
 
     if (firstInvalid) {
       hintEl.textContent = 'Grades must be between 0 and 100.';
@@ -527,7 +615,7 @@
       return;
     }
 
-    if (values.length === 0) {
+    if (entries.length === 0) {
       hintEl.textContent = 'Enter at least one grade.';
       return;
     }
@@ -537,7 +625,7 @@
     calcBtn.disabled = true;
     calcLabel.textContent = 'Calculating…';
 
-    const average = await computeAverageAsync(values);
+    const average = await computeAverageAsync(entries);
     const classification = classify(average);
 
     resultEl.classList.add('is-visible');
